@@ -49,39 +49,6 @@ class ShapeContext(object):
             points = points + [[0, 0]] * (simpleto - len(points))
         return points
 
-    '''def get_points_from_img(self, image, threshold=50, simpleto=100, radius=2):
-        """
-            That is not very good algorithm of choosing path points, but it will work for our case.
-            Idea of it is just to create grid and choose points that on this grid.
-        """
-        if len(image.shape) > 2:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        dst = cv2.Canny(image, threshold, threshold * 3, 3)
-        py, px = np.gradient(image)
-        # px, py gradients maps shape can be smaller then input image shape
-        points = [index for index, val in np.ndenumerate(dst)
-                  if val == 255 and index[0] < py.shape[0] and index[1] < py.shape[1]]
-        h, w = image.shape
-        _radius = radius
-        while len(points) > simpleto:
-            newpoints = points
-            xr = range(0, w, _radius)
-            yr = range(0, h, _radius)
-            for p in points:
-                if p[0] not in yr and p[1] not in xr:
-                    newpoints.remove(p)
-                    if len(points) <= simpleto:
-                        T = np.zeros((simpleto, 1))
-                        for i, (y, x) in enumerate(points):
-                            radians = math.atan2(py[y, x], px[y, x])
-                            T[i] = radians + 2 * math.pi * (radians < 0)
-                        return points, np.asmatrix(T)
-            _radius += 1
-        T = np.zeros((simpleto, 1))
-        for i, (y, x) in enumerate(points):
-            radians = math.atan2(py[y, x], px[y, x])
-            T[i] = radians + 2 * math.pi * (radians < 0)
-        return points, np.asmatrix(T)'''
 
     def _cost(self, hi, hj):
         cost = 0
