@@ -1,17 +1,11 @@
-from django.shortcuts import render
-from django.http import FileResponse
-import sqlite3
-import cv2 
-import os
+import numpy as np
+import cv2
 import math
 from scipy.spatial.distance import cdist, cosine
 from scipy.optimize import linear_sum_assignment
-import numpy as np;
 import matplotlib.pyplot as plt
 
-# -------------------------- change based on your path -------------------------- #
-GREY_DIR = 'Users/Douglas/Contextmatching/csc664/app/static/app/imagesgrey/'
-# ------------------------------------------------------------------------------- # 
+
 class ShapeContext(object):
 
     def __init__(self, nbins_r=5, nbins_theta=12, r_inner=0.1250, r_outer=2.0):
@@ -148,137 +142,3 @@ class ShapeContext(object):
         result = self._hungarian(C)
 
         return result
-
-  #---------------------------------------#      
-
-GREY_FILES = []
-sc = ShapeContext()
-
-def bin_img(image):
-    img = cv2.imread(image)
-    img_blur = cv2.GaussianBlur(img, (3,3), 0)
-    edges = cv2.Canny(image=img_blur, threshold1=100, threshold2=200)
-    return edges
-
-
-def list_files(dir): 
-    # files
-    fl_total = []
-    # dir
-    di = []
-
-    for path, dirs, files in os.walk(dir):
-        for dir in dirs:
-            di.append(dir)
-
-        fl = []
-        for file in files:
-            fl.append(file)
-            if len(fl) == 5:
-                fl_total.append(fl)
-
-
-    return di, fl_total
-
-def get_contour_bounding_rectangles(gray):
-    """
-      Getting all 2nd level bouding boxes based on contour detection algorithm.
-    """
-    cnts = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    res = []
-    for cnt in cnts[1]:
-        (x, y, w, h) = cv2.boundingRect(cnt)
-        res.append((x, y, x + w, y + h))
-
-    return 
-
-# Create your views here.
-# request handler
-def match_image(request):
-    try:
-
-        # process query image
-        post = request.POST.get("path")
-        post = post.replace("/static/app/images/grey/", '')
-        post = GREY_DIR + post
-
-        # edge detection on query image
-        descs = []
-        img_query_edges = bin_img(post)
-        contour1, heirarchy = cv2.findContours(img_query_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        img_query_hist = cv2.imread('app' + post)
-        hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-        hist_query[255, 255, 255] = 0
-        cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
-
-        #descriptor
-        points = sc.get_points_from_img(img_query_edges, img_query_edges, 20)
-        descriptor = sc.compute(points).flatten()
-        descs.append(descriptor)
-        #getting all the images maybe.
-        scores = []
-        
-        for res in results:
-            hash_file = res[1]
-            temp_file = res[2].replace('/Users/Douglas/shaper/csc664/', '')
-            img = bin_img(temp_file)
-            contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-            img_hist = cv2.imread(temp_file)
-            hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-            hist[255, 255, 255] = 0
-            cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
-
-            hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
-            cont_diff = cv2.matchShapes(contour1[0], contour2[0], cv2.CONTOURS_MATCH_I1, 0)
-
-            scores.append((cont_diff, hist_diff, hash_file, temp_file))
-
-        scores.sort(key=lambda y: y[1], reverse=True)
-
-
-        best_match = {}
-        for index, tuple in enumerate(scores):
-            if tuple[2] not in best_match:
-                best_match[tuple[2]] = ''
-            best_match[tuple[2]] = tuple[3]
-
-        # trim results 
-        best_match = dict(list(best_match.items())[:5])
-
-
-
-
-       
-        
-        # compute shape context 
-        # for each point on the edge, make coarse histogram in log-polar (shape context)
-    
-    except: 
-        print("error while matching images.")
-
-
-def load_front_page(request):
-    try:
-        dir, files = list_files(GREY_DIR)
-        dir = [x for x in dir if not x.startswith('segmented')]
-        dir = [GREY_DIR + s + "/org/" for s in dir]
-
-        for a, b in zip(dir, files):
-            for f in b:
-                GREY_FILES.append(a + f)
-
-        # print(GREY_FILES)
-
-        image_paths = {}
-        for file in GREY_FILES:
-            if file not in image_paths:
-                image_paths[file] = ''
-            image_paths[file] = file.replace('Users/Douglas/Contextmatching/csc664/app', '')
-
-        # print(image_paths)
-        
-        return render(request, 'hello.html', {'context': image_paths})
-    except:
-        print("Can not open file system.")
