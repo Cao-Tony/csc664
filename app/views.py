@@ -219,9 +219,9 @@ def match_image(request):
         #getting all the images maybe.
         scores = []
         
-        for res in results:
+        for res in GREY_FILES:
             hash_file = res[1]
-            temp_file = res[2].replace('/Users/Douglas/shaper/csc664/', '')
+            temp_file = res[2].replace('/Users/Douglas/Contextmatching/csc664/', '')
             img = bin_img(temp_file)
             contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -247,16 +247,15 @@ def match_image(request):
         # trim results 
         best_match = dict(list(best_match.items())[:5])
 
-
-
-
-       
-        
+        return render(request, 'hello.html', {'context': best_match})
+   
+  
         # compute shape context 
-        # for each point on the edge, make coarse histogram in log-polar (shape context)
+       
     
     except: 
         print("error while matching images.")
+
 
 
 def load_front_page(request):
