@@ -7,11 +7,14 @@ import math
 from scipy.spatial.distance import cdist, cosine
 from scipy.optimize import linear_sum_assignment
 import numpy as np;
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 # -------------------------- change based on your path -------------------------- #
-GREY_DIR = 'Users/Douglas/Contextmatching/csc664/app/static/app/imagesgrey/'
+GREY_DIR = '/Users/tonycao/Desktop/csc664/csc664/app/static/app/images/grey/'
 # ------------------------------------------------------------------------------- # 
+# database images 
+GREY_FILES = []
+
 class ShapeContext(object):
 
     def __init__(self, nbins_r=5, nbins_theta=12, r_inner=0.1250, r_outer=2.0):
@@ -37,7 +40,7 @@ class ShapeContext(object):
     def get_points_from_img(self, image, simpleto=100):
         """
             This is much faster version of getting shape points algo.
-            It's based on cv2.findContours algorithm, which is basically return shape points
+            It's based on cv2.findContours algorithm, which is basically returning shape points
             ordered by curve direction. So it's gives better and faster result
         """
         if len(image.shape) > 2:
@@ -151,9 +154,6 @@ class ShapeContext(object):
 
   #---------------------------------------#      
 
-GREY_FILES = []
-sc = ShapeContext()
-
 def bin_img(image):
     img = cv2.imread(image)
     img_blur = cv2.GaussianBlur(img, (3,3), 0)
@@ -196,44 +196,54 @@ def get_contour_bounding_rectangles(gray):
 # request handler
 def match_image(request):
     try:
-
+        sc = ShapeContext() 
+        
         # process query image
         post = request.POST.get("path")
         post = post.replace("/static/app/images/grey/", '')
         post = GREY_DIR + post
 
         # edge detection on query image
-        descs = []
         img_query_edges = bin_img(post)
-        contour1, heirarchy = cv2.findContours(img_query_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # contour1, heirarchy = cv2.findContours(img_query_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        img_query_hist = cv2.imread('app' + post)
-        hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-        hist_query[255, 255, 255] = 0
-        cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
+        # img_query_hist = cv2.imread(post)
+        # hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
+        # hist_query[255, 255, 255] = 0
+        # cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
 
-        #descriptor
-        points = sc.get_points_from_img(img_query_edges, img_query_edges, 20)
+        # descriptor
+        descs = []
+        points = sc.get_points_from_img(img_query_edges, 20)
         descriptor = sc.compute(points).flatten()
         descs.append(descriptor)
-        #getting all the images maybe.
-        scores = []
+
+        # compute descriptor for all images in DB
+        hist_dict = {}
         
-        for res in GREY_FILES:
-            hash_file = res[1]
-            temp_file = res[2].replace('/Users/Douglas/Contextmatching/csc664/', '')
-            img = bin_img(temp_file)
-            contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for file in GREY_FILES:
+            img = bin_img(file)
+            # contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            img_hist = cv2.imread(temp_file)
-            hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-            hist[255, 255, 255] = 0
-            cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
+            # img_hist = cv2.imread(temp_file)
+            # hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
+            # hist[255, 255, 255] = 0
+            # cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
 
-            hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
-            cont_diff = cv2.matchShapes(contour1[0], contour2[0], cv2.CONTOURS_MATCH_I1, 0)
+            # hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
+            # cont_diff = cv2.matchShapes(contour1[0], contour2[0], cv2.CONTOURS_MATCH_I1, 0)
 
-            scores.append((cont_diff, hist_diff, hash_file, temp_file))
+            img_desc = []
+            img_points = sc.get_points_from_img(img, 20)
+            img_descriptor = sc.compute(img_points).flatten()
+            img_desc.append(img_descriptor)
+
+            # key: image path, value: image descriptor
+            if file not in hist_dict:
+                hist_dict[file] = ''
+
+            hist_dict[file] = img_desc
+
 
         scores.sort(key=lambda y: y[1], reverse=True)
 
@@ -246,13 +256,9 @@ def match_image(request):
 
         # trim results 
         best_match = dict(list(best_match.items())[:5])
+        print(list(best_match.values())[1])
 
-        return render(request, 'hello.html', {'context': best_match})
-   
-  
-        # compute shape context 
-       
-    
+        return render(request, 'index.html', {'context': best_match})    
     except: 
         print("error while matching images.")
 
@@ -274,7 +280,7 @@ def load_front_page(request):
         for file in GREY_FILES:
             if file not in image_paths:
                 image_paths[file] = ''
-            image_paths[file] = file.replace('Users/Douglas/Contextmatching/csc664/app', '')
+            image_paths[file] = file.replace('/Users/tonycao/Desktop/csc664/csc664/app', '')
 
         # print(image_paths)
         
