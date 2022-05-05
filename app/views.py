@@ -182,6 +182,7 @@ def list_files(dir):
 
     return di, fl_total
 
+
 def get_contour_bounding_rectangles(gray):
     """
       Getting all 2nd level bouding boxes based on contour detection algorithm.
@@ -193,6 +194,7 @@ def get_contour_bounding_rectangles(gray):
         res.append((x, y, x + w, y + h))
 
     return 
+
 
 # Create your views here.
 # request handler
@@ -208,12 +210,11 @@ def match_image(request):
         # edge detection on query image
         img_query_edges = bin_img(post)
        # print(post)
-        contour1, heirarchy = cv2.findContours(img_query_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        img_query_hist = cv2.imread(post)
-        hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-        hist_query[255, 255, 255] = 0
-        cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
+       #  img_query_hist = cv2.imread(post)
+       # hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
+       # hist_query[255, 255, 255] = 0
+        #cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
 
         # descriptor
         descs = []
@@ -228,15 +229,14 @@ def match_image(request):
             print("sfagfsgsdg")
       
             img = bin_img(file)
-            contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+          #  contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            img_hist = cv2.imread(img)
+            img_hist = cv2.imread(file)
             hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
             hist[255, 255, 255] = 0
             cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
 
-            hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
-            cont_diff = cv2.matchShapes(contour1[0], contour2[0], cv2.CONTOURS_MATCH_I1, 0)
+          #  hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
 
             
             img_points = sc.get_points_from_img(img, 20)
@@ -244,7 +244,7 @@ def match_image(request):
             img_desc.append(img_descriptor)
             
             print("inside")
-            scores.append((cont_diff, hist_diff, file, file))
+          #  scores.append((hist_diff, file, file))
             print("score")
             # key: image path, value: image descriptor
             if file not in hist_dict:
@@ -257,11 +257,7 @@ def match_image(request):
         scores.sort(key=lambda y: y[1], reverse=True)
         
 
-        best_match = {}
-        for index, tuple in enumerate( scores):
-            if tuple[2] not in best_match:
-                best_match[tuple[2]] = ''
-            best_match[tuple[2]] = tuple[3]
+        hist_dict[file] = img_desc
 
         # trim results 
         best_match = dict(list(best_match.items())[:5])
@@ -274,6 +270,7 @@ def match_image(request):
   #  except: 
         print("error while matching images.")
 
+      
 
 
 def load_front_page(request):
