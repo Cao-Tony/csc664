@@ -198,98 +198,55 @@ def get_contour_bounding_rectangles(gray):
 # Create your views here.
 # request handler
 def match_image(request):
-  #  try:
-        sc = ShapeContext() 
-        
-        # process query image
-        post = request.POST.get("path")
-        post = post.replace("/static/app/images/grey/", '')
-        post = GREY_DIR + post
+    sc = ShapeContext() 
+    
+    # process query image
+    post = request.POST.get("path")
+    post = post.replace("/static/app/images/grey/", '')
+    post = GREY_DIR + post
 
-        # edge detection on query image
-        img_query_edges = bin_img(post)
-       # print(post)
+    # edge detection on query image
+    img_query_edges = bin_img(post)
 
-       #  img_query_hist = cv2.imread(post)
-       # hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-       # hist_query[255, 255, 255] = 0
-        #cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
+    # descriptor for query image
+    descs = []
+    points = sc.get_points_from_img(img_query_edges, 15)
+    descriptor = sc.compute(points).flatten()
+    descs.append(descriptor)
 
-        # descriptor
-        descs = []
-        points = sc.get_points_from_img(img_query_edges, 15)
-        descriptor = sc.compute(points).flatten()
-        descs.append(descriptor)
-        # compute descriptor for all images in DB
-        hist_dict = {}
-        scores = []
-        
-        for file in GREY_FILES:
-            print("sfagfsgsdg")
-      
-            img = bin_img(file)
-          #  contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # get DB image paths
+    GREY_FILES = []
 
-            img_hist = cv2.imread(file)
-            hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-            hist[255, 255, 255] = 0
-            cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
-
-          #  hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
-
-            
-            img_points = sc.get_points_from_img(img, 20)
-            img_descriptor = sc.compute(img_points).flatten()
-            img_desc.append(img_descriptor)
-            
-            print("inside")
-          #  scores.append((hist_diff, file, file))
-            print("score")
-            # key: image path, value: image descriptor
-            if file not in hist_dict:
-             hist_dict[file] = ''
-            
-            hist_dict[file] = img_desc
+    dir, files = list_files(GREY_DIR)
+        dir = [x for x in dir if not x.startswith('segmented')]
+        dir = [GREY_DIR + s + "/org/" for s in dir]
 
     for a, b in zip(dir, files):
         for f in b:
             GREY_FILES.append(a + f)
+
+    # compute SC for all images in DB 
+    DB_DESCRIPTOR = {}
     
     for file in GREY_FILES:
+        # edge detection 
         img = bin_img(file)
-        contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        img_hist = cv2.imread(file)
-        hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-        hist[255, 255, 255] = 0
-        cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
-
-        hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
-        cont_diff = cv2.matchShapes(contour1[0], contour2[0], cv2.CONTOURS_MATCH_I1, 0)
-
+        # descriptor
         img_points = sc.get_points_from_img(img, 20)
         img_descriptor = sc.compute(img_points).flatten()
-        img_desc.append(img_descriptor)
         
-        scores.append((cont_diff, hist_diff, file))
-
         # key: image path, value: image descriptor
-        if file not in hist_dict:
-            hist_dict[file] = ''
+        if file not in DB_DESCRIPTOR:
+            DB_DESCRIPTOR[file] = ''
         
-        hist_dict[file] = img_desc
-
-    scores.sort(key=lambda y: y[1], reverse=True)
-    
-    hist_dict[file] = img_desc
+        DB_DESCRIPTOR[file] = img_descriptor
 
     # trim results 
-    best_match = dict(list(scores.items())[:5])
-    print(dict(list(scores.items())[:5]))
+    # best_match = dict(list(scores.items())[:5])
+    # print(dict(list(scores.items())[:5]))
 
       
-
-
 def load_front_page(request):
     try:
         GREY_FILES = []
