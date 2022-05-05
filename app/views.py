@@ -207,7 +207,8 @@ def match_image(request):
 
         # edge detection on query image
         img_query_edges = bin_img(post)
-        # contour1, heirarchy = cv2.findContours(img_query_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+       # print(post)
+        contour1, heirarchy = cv2.findContours(img_query_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         img_query_hist = cv2.imread(post)
         hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
@@ -224,17 +225,21 @@ def match_image(request):
         scores = []
         
         for file in GREY_FILES:
-            img = bin_img(file)
+            print("sfagfsgsdg")
+            hash_file = file[1]
+            temp_file = file[2].replace("/Users/Douglas/Contextmatching/csc664/app", '')
             
-            # contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            img = bin_img(temp_file)
+            contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             img_hist = cv2.imread(img)
             hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
             hist[255, 255, 255] = 0
             cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
 
-            # hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
-            # cont_diff = cv2.matchShapes(contour1[0], contour2[0], cv2.CONTOURS_MATCH_I1, 0)
+            hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
+            cont_diff = cv2.matchShapes(contour1[0], contour2[0], cv2.CONTOURS_MATCH_I1, 0)
 
             
             img_points = sc.get_points_from_img(img, 20)
@@ -242,7 +247,7 @@ def match_image(request):
             img_desc.append(img_descriptor)
             
 
-            scores.append((img_desc))
+            scores.append((cont_diff, hist_diff, hash_file, temp_file))
             # key: image path, value: image descriptor
             if file not in hist_dict:
                 hist_dict[file] = ''
@@ -251,18 +256,18 @@ def match_image(request):
 
         
 
-        img_desc.sort(key=lambda y: y[1], reverse=True)
+        scores.sort(key=lambda y: y[1], reverse=True)
 
 
         best_match = {}
-        for index, tuple in enumerate(img_desc):
+        for index, tuple in enumerate(scores):
             if tuple[2] not in best_match:
                 best_match[tuple[2]] = ''
             best_match[tuple[2]] = tuple[3]
 
         # trim results 
         best_match = dict(list(best_match.items())[:5])
-        
+        print(dict(list(best_match.items())[:5]))
         print("inside")
 
         
@@ -283,7 +288,7 @@ def load_front_page(request):
             for f in b:
                 GREY_FILES.append(a + f)
 
-        # print(GREY_FILES)
+        #print(GREY_FILES)
 
         image_paths = {}
         for file in GREY_FILES:
