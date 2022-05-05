@@ -197,7 +197,7 @@ def get_contour_bounding_rectangles(gray):
 # Create your views here.
 # request handler
 def match_image(request):
-    try:
+  #  try:
         sc = ShapeContext() 
         
         # process query image
@@ -226,11 +226,9 @@ def match_image(request):
         
         for file in GREY_FILES:
             print("sfagfsgsdg")
-            hash_file = file[1]
-            temp_file = file[2].replace("/Users/Douglas/Contextmatching/csc664/app", '')
+
             
-            
-            img = bin_img(temp_file)
+            img = bin_img(file)
             contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             img_hist = cv2.imread(img)
@@ -246,18 +244,18 @@ def match_image(request):
             img_descriptor = sc.compute(img_points).flatten()
             img_desc.append(img_descriptor)
             
-
+            print("inside")
             scores.append((cont_diff, hist_diff, hash_file, temp_file))
             # key: image path, value: image descriptor
             if file not in hist_dict:
-                hist_dict[file] = ''
-
+             hist_dict[file] = ''
+            
             hist_dict[file] = img_desc
 
         
-
+        
         scores.sort(key=lambda y: y[1], reverse=True)
-
+        
 
         best_match = {}
         for index, tuple in enumerate(scores):
@@ -268,12 +266,12 @@ def match_image(request):
         # trim results 
         best_match = dict(list(best_match.items())[:5])
         print(dict(list(best_match.items())[:5]))
-        print("inside")
+        
 
         
 
         return render(request, 'index.html', {'context': best_match})    
-    except: 
+  #  except: 
         print("error while matching images.")
 
 
