@@ -10,7 +10,7 @@ import numpy as np;
 # import matplotlib.pyplot as plt
 
 # -------------------------- change based on your path -------------------------- #
-GREY_DIR = '/Users/tonycao/Desktop/csc664/csc664/app/static/app/images/grey/'
+GREY_DIR = '/Users/Douglas/Contextmatching/csc664/app/static/app/images/grey/'
 # ------------------------------------------------------------------------------- # 
 # database images 
 img_desc = []
@@ -80,7 +80,7 @@ class ShapeContext(object):
                 C[i, j] = self._cost(Q[j] / d, P[i] / p)
 
         return C
-
+    
     def compute(self, points):
         """
           Here we are computing shape context descriptor
@@ -118,18 +118,19 @@ class ShapeContext(object):
         theta_array_2 = theta_array + 2 * math.pi * (theta_array < 0)
         # Simple Quantization
         theta_array_q = (1 + np.floor(theta_array_2 / (2 * math.pi / self.nbins_theta))).astype(int)
-
+        
+        return fz
         # building point descriptor based on angle and distance
-        nbins = self.nbins_theta * self.nbins_r
-        descriptor = np.zeros((t_points, nbins))
-        for i in range(t_points):
-            sn = np.zeros((self.nbins_r, self.nbins_theta))
-            for j in range(t_points):
-                if (fz[i, j]):
-                    sn[r_array_q[i, j] - 1, theta_array_q[i, j] - 1] += 1
-            descriptor[i] = sn.reshape(nbins)
-
-        return descriptor
+        # nbins = self.nbins_theta * self.nbins_r
+        # descriptor = np.zeros((t_points, nbins))
+        # for i in range(t_points):
+        #     sn = np.zeros((self.nbins_r, self.nbins_theta))
+        #     for j in range(t_points):
+        #         if (fz[i, j]):
+        #             sn[r_array_q[i, j] - 1, theta_array_q[i, j] - 1] += 1
+        #     descriptor[i] = sn.reshape(nbins)
+        # print(descriptor)
+        # return descriptor
 
     def cosine_diff(self, P, Q):
         """
@@ -218,8 +219,8 @@ def match_image(request):
     GREY_FILES = []
 
     dir, files = list_files(GREY_DIR)
-        dir = [x for x in dir if not x.startswith('segmented')]
-        dir = [GREY_DIR + s + "/org/" for s in dir]
+    dir = [x for x in dir if not x.startswith('segmented')]
+    dir = [GREY_DIR + s + "/org/" for s in dir]
 
     for a, b in zip(dir, files):
         for f in b:
@@ -242,9 +243,36 @@ def match_image(request):
         
         DB_DESCRIPTOR[file] = img_descriptor
 
+     # print(len(DB_DESCRIPTOR))
+    # print('DB_DESC: ', DB_DESCRIPTOR)
+
+    # cost calculation
+    COST_DICT = {}
+    for path in DB_DESCRIPTOR: 
+        hist = DB_DESCRIPTOR[path]
+        # print(type(descriptor))
+        # print(descriptor)
+        # print(type(hist))
+        # print(hist)
+
+        cost = 0
+        cost = (np.subtract(descriptor, hist))**2/np.add(descriptor, hist)
+        cost = cost/2
+
+        # print(cost, '\n\n') 
+        # key: image path, value: cost
+        if path not in COST_DICT:
+            COST_DICT[path] = ''
+
+        COST_DICT[path] = cost
+
+    # print(COST_DICT)
+
+  
     # trim results 
     # best_match = dict(list(scores.items())[:5])
     # print(dict(list(scores.items())[:5]))
+
 
       
 def load_front_page(request):
@@ -265,7 +293,7 @@ def load_front_page(request):
         for file in GREY_FILES:
             if file not in image_paths:
                 image_paths[file] = ''
-            image_paths[file] = file.replace('/Users/tonycao/Desktop/csc664/csc664/app', '')
+            image_paths[file] = file.replace('/Users/Douglas/Contextmatching/csc664/app', '')
 
         # print(image_paths)
         
