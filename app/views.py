@@ -226,8 +226,7 @@ def match_image(request):
         
         for file in GREY_FILES:
             print("sfagfsgsdg")
-
-            
+      
             img = bin_img(file)
             contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -245,7 +244,8 @@ def match_image(request):
             img_desc.append(img_descriptor)
             
             print("inside")
-            scores.append((cont_diff, hist_diff, hash_file, temp_file))
+            scores.append((cont_diff, hist_diff, file, file))
+            print("score")
             # key: image path, value: image descriptor
             if file not in hist_dict:
              hist_dict[file] = ''
@@ -258,7 +258,7 @@ def match_image(request):
         
 
         best_match = {}
-        for index, tuple in enumerate(scores):
+        for index, tuple in enumerate( scores):
             if tuple[2] not in best_match:
                 best_match[tuple[2]] = ''
             best_match[tuple[2]] = tuple[3]
