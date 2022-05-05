@@ -10,11 +10,11 @@ import numpy as np;
 # import matplotlib.pyplot as plt
 
 # -------------------------- change based on your path -------------------------- #
-GREY_DIR = '/Users/tonycao/Desktop/csc664/csc664/app/static/app/images/grey/'
+GREY_DIR = '/Users/Douglas/Contextmatching/csc664/app/static/app/images/grey/'
 # ------------------------------------------------------------------------------- # 
 # database images 
 GREY_FILES = []
-
+img_desc = []
 class ShapeContext(object):
 
     def __init__(self, nbins_r=5, nbins_theta=12, r_inner=0.1250, r_outer=2.0):
@@ -52,7 +52,9 @@ class ShapeContext(object):
             points = np.concatenate([points, np.array(cnts[1][1]).reshape((-1, 2))], axis=0)
         points = points.tolist()
         step = len(points) / simpleto
-        points = [points[i] for i in range(0, len(points), step)][:simpleto]
+        steps = int(step)
+        lens = int(len(points))
+        points = [points[i] for i in range(0, lens, steps)][:simpleto]
         if len(points) < simpleto:
             points = points + [[0, 0]] * (simpleto - len(points))
         return points
@@ -89,7 +91,7 @@ class ShapeContext(object):
         # getting two points with maximum distance to norm angle by them
         # this is needed for rotation invariant feature
         am = r_array.argmax()
-        max_points = [am / t_points, am % t_points]
+        max_points = [am // t_points, am % t_points]
         # normalizing
         r_array_n = r_array / r_array.mean()
         # create log space
@@ -207,56 +209,63 @@ def match_image(request):
         img_query_edges = bin_img(post)
         # contour1, heirarchy = cv2.findContours(img_query_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # img_query_hist = cv2.imread(post)
-        # hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-        # hist_query[255, 255, 255] = 0
-        # cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
+        img_query_hist = cv2.imread(post)
+        hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
+        hist_query[255, 255, 255] = 0
+        cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
 
         # descriptor
         descs = []
-        points = sc.get_points_from_img(img_query_edges, 20)
+        points = sc.get_points_from_img(img_query_edges, 15)
         descriptor = sc.compute(points).flatten()
         descs.append(descriptor)
-
         # compute descriptor for all images in DB
         hist_dict = {}
+        scores = []
         
         for file in GREY_FILES:
             img = bin_img(file)
+            
             # contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            # img_hist = cv2.imread(temp_file)
-            # hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-            # hist[255, 255, 255] = 0
-            # cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
+            img_hist = cv2.imread(img)
+            hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
+            hist[255, 255, 255] = 0
+            cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
 
             # hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
             # cont_diff = cv2.matchShapes(contour1[0], contour2[0], cv2.CONTOURS_MATCH_I1, 0)
 
-            img_desc = []
+            
             img_points = sc.get_points_from_img(img, 20)
             img_descriptor = sc.compute(img_points).flatten()
             img_desc.append(img_descriptor)
+            
 
+            scores.append((img_desc))
             # key: image path, value: image descriptor
             if file not in hist_dict:
                 hist_dict[file] = ''
 
             hist_dict[file] = img_desc
 
+        
 
-        scores.sort(key=lambda y: y[1], reverse=True)
+        img_desc.sort(key=lambda y: y[1], reverse=True)
 
 
         best_match = {}
-        for index, tuple in enumerate(scores):
+        for index, tuple in enumerate(img_desc):
             if tuple[2] not in best_match:
                 best_match[tuple[2]] = ''
             best_match[tuple[2]] = tuple[3]
 
         # trim results 
         best_match = dict(list(best_match.items())[:5])
-        print(list(best_match.values())[1])
+        
+        print("inside")
+
+        
 
         return render(request, 'index.html', {'context': best_match})    
     except: 
@@ -280,7 +289,7 @@ def load_front_page(request):
         for file in GREY_FILES:
             if file not in image_paths:
                 image_paths[file] = ''
-            image_paths[file] = file.replace('/Users/tonycao/Desktop/csc664/csc664/app', '')
+            image_paths[file] = file.replace('/Users/Douglas/Contextmatching/csc664/app', '')
 
         # print(image_paths)
         
