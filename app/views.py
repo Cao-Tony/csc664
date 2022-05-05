@@ -180,6 +180,7 @@ def list_files(dir):
 
     return di, fl_total
 
+
 def get_contour_bounding_rectangles(gray):
     """
       Getting all 2nd level bouding boxes based on contour detection algorithm.
@@ -192,76 +193,70 @@ def get_contour_bounding_rectangles(gray):
 
     return 
 
+
 # Create your views here.
 # request handler
 def match_image(request):
-    try:
-        sc = ShapeContext() 
-        
-        # process query image
-        post = request.POST.get("path")
-        post = post.replace("/static/app/images/grey/", '')
-        post = GREY_DIR + post
+    sc = ShapeContext() 
+    
+    # process query image
+    post = request.POST.get("path")
+    post = post.replace("/static/app/images/grey/", '')
+    post = GREY_DIR + post
 
-        # edge detection on query image
-        img_query_edges = bin_img(post)
-        # contour1, heirarchy = cv2.findContours(img_query_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # edge detection on query image
+    img_query_edges = bin_img(post)
+    # contour1, heirarchy = cv2.findContours(img_query_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # img_query_hist = cv2.imread(post)
-        # hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-        # hist_query[255, 255, 255] = 0
-        # cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
+    # img_query_hist = cv2.imread(post)
+    # hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
+    # hist_query[255, 255, 255] = 0
+    # cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
 
-        # descriptor
-        descs = []
-        points = sc.get_points_from_img(img_query_edges, 20)
-        descriptor = sc.compute(points).flatten()
-        descs.append(descriptor)
+    # descriptor
+    descs = []
+    points = sc.get_points_from_img(img_query_edges, 20)
+    descriptor = sc.compute(points).flatten()
+    descs.append(descriptor)
 
-        # compute descriptor for all images in DB
-        hist_dict = {}
-        
-        for file in GREY_FILES:
-            img = bin_img(file)
-            # contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # compute descriptor for all images in DB
+    hist_dict = {}
+    
+    for file in GREY_FILES:
+        img = bin_img(file)
+        # contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            # img_hist = cv2.imread(temp_file)
-            # hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-            # hist[255, 255, 255] = 0
-            # cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
+        # img_hist = cv2.imread(temp_file)
+        # hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
+        # hist[255, 255, 255] = 0
+        # cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
 
-            # hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
-            # cont_diff = cv2.matchShapes(contour1[0], contour2[0], cv2.CONTOURS_MATCH_I1, 0)
+        # hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
+        # cont_diff = cv2.matchShapes(contour1[0], contour2[0], cv2.CONTOURS_MATCH_I1, 0)
 
-            img_desc = []
-            img_points = sc.get_points_from_img(img, 20)
-            img_descriptor = sc.compute(img_points).flatten()
-            img_desc.append(img_descriptor)
+        img_desc = []
+        img_points = sc.get_points_from_img(img, 20)
+        img_descriptor = sc.compute(img_points).flatten()
+        img_desc.append(img_descriptor)
 
-            # key: image path, value: image descriptor
-            if file not in hist_dict:
-                hist_dict[file] = ''
+        # key: image path, value: image descriptor
+        if file not in hist_dict:
+            hist_dict[file] = ''
 
-            hist_dict[file] = img_desc
+        hist_dict[file] = img_desc
 
+    scores.sort(key=lambda y: y[1], reverse=True)
+    best_match = {}
+    for index, tuple in enumerate(scores):
+        if tuple[2] not in best_match:
+            best_match[tuple[2]] = ''
+        best_match[tuple[2]] = tuple[3]
 
-        scores.sort(key=lambda y: y[1], reverse=True)
+    # trim results 
+    best_match = dict(list(best_match.items())[:5])
+    print(list(best_match.values())[1])
 
-
-        best_match = {}
-        for index, tuple in enumerate(scores):
-            if tuple[2] not in best_match:
-                best_match[tuple[2]] = ''
-            best_match[tuple[2]] = tuple[3]
-
-        # trim results 
-        best_match = dict(list(best_match.items())[:5])
-        print(list(best_match.values())[1])
-
-        return render(request, 'index.html', {'context': best_match})    
-    except: 
-        print("error while matching images.")
-
+    return render(request, 'index.html', {'context': best_match})   
 
 
 def load_front_page(request):

@@ -24,7 +24,7 @@
     <div class="flex-container"> 
       {% for key, value in context.items %}
         <div>
-          <form action="/match_image/" method="post" target="_self">
+          <form action="/match_image/" method="post">
             {% csrf_token %}
             <!-- <p>{{ value }}</p> -->
             <!-- <img src="{{ value }}" width="10%" /> -->
