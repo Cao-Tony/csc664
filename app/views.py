@@ -198,36 +198,58 @@ def get_contour_bounding_rectangles(gray):
 # Create your views here.
 # request handler
 def match_image(request):
-    sc = ShapeContext() 
-    
-    # process query image
-    post = request.POST.get("path")
-    post = post.replace("/static/app/images/grey/", '')
-    post = GREY_DIR + post
-
-    # edge detection on query image
-    img_query_edges = bin_img(post)
-    contour1, heirarchy = cv2.findContours(img_query_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    img_query_hist = cv2.imread(post)
-    hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
-    hist_query[255, 255, 255] = 0
-    cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
-
-    # descriptor
-    descs = []
-    points = sc.get_points_from_img(img_query_edges, 15)
-    descriptor = sc.compute(points).flatten()
-    descs.append(descriptor)
-    # compute descriptor for all images in DB
-    hist_dict = {}
-    scores = []
-
-    GREY_FILES = []
+  #  try:
+        sc = ShapeContext() 
         
-    dir, files = list_files(GREY_DIR)
-    dir = [x for x in dir if not x.startswith('segmented')]
-    dir = [GREY_DIR + s + "/org/" for s in dir]
+        # process query image
+        post = request.POST.get("path")
+        post = post.replace("/static/app/images/grey/", '')
+        post = GREY_DIR + post
+
+        # edge detection on query image
+        img_query_edges = bin_img(post)
+       # print(post)
+
+       #  img_query_hist = cv2.imread(post)
+       # hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
+       # hist_query[255, 255, 255] = 0
+        #cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
+
+        # descriptor
+        descs = []
+        points = sc.get_points_from_img(img_query_edges, 15)
+        descriptor = sc.compute(points).flatten()
+        descs.append(descriptor)
+        # compute descriptor for all images in DB
+        hist_dict = {}
+        scores = []
+        
+        for file in GREY_FILES:
+            print("sfagfsgsdg")
+      
+            img = bin_img(file)
+          #  contour2, heirarchy = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            img_hist = cv2.imread(file)
+            hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
+            hist[255, 255, 255] = 0
+            cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
+
+          #  hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
+
+            
+            img_points = sc.get_points_from_img(img, 20)
+            img_descriptor = sc.compute(img_points).flatten()
+            img_desc.append(img_descriptor)
+            
+            print("inside")
+          #  scores.append((hist_diff, file, file))
+            print("score")
+            # key: image path, value: image descriptor
+            if file not in hist_dict:
+             hist_dict[file] = ''
+            
+            hist_dict[file] = img_desc
 
     for a, b in zip(dir, files):
         for f in b:
@@ -265,7 +287,7 @@ def match_image(request):
     best_match = dict(list(scores.items())[:5])
     print(dict(list(scores.items())[:5]))
 
-    return render(request, 'index.html', {'context': best_match})   
+      
 
 
 def load_front_page(request):
