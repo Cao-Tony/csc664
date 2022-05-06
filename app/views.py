@@ -106,21 +106,22 @@ class ShapeContext(object):
 
         fz = r_array_q > 0
 
-        # getting angles in radians
-        theta_array = cdist(points, points, lambda u, v: math.atan2((v[1] - u[1]), (v[0] - u[0])))
-        norm_angle = theta_array[max_points[0], max_points[1]]
-        # making angles matrix rotation invariant
-        theta_array = (theta_array - norm_angle * (np.ones((t_points, t_points)) - np.identity(t_points)))
-        # removing all very small values because of float operation
-        theta_array[np.abs(theta_array) < 1e-7] = 0
+        # print('hist: ', r_array_q)
 
-        # 2Pi shifted because we need angels in [0,2Pi]
-        theta_array_2 = theta_array + 2 * math.pi * (theta_array < 0)
-        # Simple Quantization
-        theta_array_q = (1 + np.floor(theta_array_2 / (2 * math.pi / self.nbins_theta))).astype(int)
-        
-        return fz
-        # building point descriptor based on angle and distance
+        # # getting angles in radians
+        # theta_array = cdist(points, points, lambda u, v: math.atan2((v[1] - u[1]), (v[0] - u[0])))
+        # norm_angle = theta_array[max_points[0], max_points[1]]
+        # # making angles matrix rotation invariant
+        # theta_array = (theta_array - norm_angle * (np.ones((t_points, t_points)) - np.identity(t_points)))
+        # # removing all very small values because of float operation
+        # theta_array[np.abs(theta_array) < 1e-7] = 0
+
+        # # 2Pi shifted because we need angels in [0,2Pi]
+        # theta_array_2 = theta_array + 2 * math.pi * (theta_array < 0)
+        # # Simple Quantization
+        # theta_array_q = (1 + np.floor(theta_array_2 / (2 * math.pi / self.nbins_theta))).astype(int)
+
+        # # building point descriptor based on angle and distance
         # nbins = self.nbins_theta * self.nbins_r
         # descriptor = np.zeros((t_points, nbins))
         # for i in range(t_points):
@@ -129,8 +130,8 @@ class ShapeContext(object):
         #         if (fz[i, j]):
         #             sn[r_array_q[i, j] - 1, theta_array_q[i, j] - 1] += 1
         #     descriptor[i] = sn.reshape(nbins)
-        # print(descriptor)
-        # return descriptor
+
+        return r_array_q
 
     def cosine_diff(self, P, Q):
         """
@@ -210,10 +211,10 @@ def match_image(request):
     img_query_edges = bin_img(post)
 
     # descriptor for query image
-    descs = []
-    points = sc.get_points_from_img(img_query_edges, 15)
-    descriptor = sc.compute(points).flatten()
-    descs.append(descriptor)
+    points = sc.get_points_from_img(img_query_edges, 15) # 15 X 15 matrix 
+    descriptor = sc.compute(points)
+    # print('hist: ', descriptor)
+    descriptor = np.array(descriptor)
 
     # get DB image paths
     GREY_FILES = []
@@ -234,8 +235,8 @@ def match_image(request):
         img = bin_img(file)
 
         # descriptor
-        img_points = sc.get_points_from_img(img, 20)
-        img_descriptor = sc.compute(img_points).flatten()
+        img_points = sc.get_points_from_img(img, 15) # 15 X 15 matrix 
+        img_descriptor = sc.compute(img_points)
         
         # key: image path, value: image descriptor
         if file not in DB_DESCRIPTOR:
@@ -243,32 +244,34 @@ def match_image(request):
         
         DB_DESCRIPTOR[file] = img_descriptor
 
-     # print(len(DB_DESCRIPTOR))
-    # print('DB_DESC: ', DB_DESCRIPTOR)
-
     # cost calculation
     COST_DICT = {}
     for path in DB_DESCRIPTOR: 
         hist = DB_DESCRIPTOR[path]
-        # print(type(descriptor))
-        # print(descriptor)
-        # print(type(hist))
-        # print(hist)
 
         cost = 0
         cost = (np.subtract(descriptor, hist))**2/np.add(descriptor, hist)
         cost = cost/2
+        cost[np.isnan(cost)] = 0
 
-        # print(cost, '\n\n') 
         # key: image path, value: cost
         if path not in COST_DICT:
             COST_DICT[path] = ''
-
+        
         COST_DICT[path] = cost
+    
+    best_match= {}
+    for min in COST_DICT:
+        
+        low = sc._hungarian(COST_DICT[min])
+        if min not in best_match:
+            best_match[min] = ''
+        
+        best_match[min] = low
+   
 
-    # print(COST_DICT)
-
-  
+    print(best_match)
+    return render(request, 'hello.html', {'context': best_match})
     # trim results 
     # best_match = dict(list(scores.items())[:5])
     # print(dict(list(scores.items())[:5]))
