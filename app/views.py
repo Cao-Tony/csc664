@@ -7,10 +7,10 @@ import math
 from scipy.spatial.distance import cdist, cosine
 from scipy.optimize import linear_sum_assignment
 import numpy as np;
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 # -------------------------- change based on your path -------------------------- #
-GREY_DIR = '/Users/Douglas/Contextmatching/csc664/app/static/app/images/grey/'
+GREY_DIR = '/Users/tonycao/Desktop/csc664/csc664/app/static/app/images/grey/'
 # ------------------------------------------------------------------------------- # 
 # database images 
 img_desc = []
@@ -36,7 +36,7 @@ class ShapeContext(object):
         total = cost_matrix[row_ind, col_ind].sum()
         indexes = zip(row_ind.tolist(), col_ind.tolist())
         return total, indexes
-    
+
     def get_points_from_img(self, image, simpleto=100):
         """
             This is much faster version of getting shape points algo.
@@ -80,7 +80,7 @@ class ShapeContext(object):
                 C[i, j] = self._cost(Q[j] / d, P[i] / p)
 
         return C
-    
+
     def compute(self, points):
         """
           Here we are computing shape context descriptor
@@ -106,32 +106,30 @@ class ShapeContext(object):
 
         fz = r_array_q > 0
 
-        # print('hist: ', r_array_q)
+        # getting angles in radians
+        theta_array = cdist(points, points, lambda u, v: math.atan2((v[1] - u[1]), (v[0] - u[0])))
+        norm_angle = theta_array[max_points[0], max_points[1]]
+        # making angles matrix rotation invariant
+        theta_array = (theta_array - norm_angle * (np.ones((t_points, t_points)) - np.identity(t_points)))
+        # removing all very small values because of float operation
+        theta_array[np.abs(theta_array) < 1e-7] = 0
 
-        # # getting angles in radians
-        # theta_array = cdist(points, points, lambda u, v: math.atan2((v[1] - u[1]), (v[0] - u[0])))
-        # norm_angle = theta_array[max_points[0], max_points[1]]
-        # # making angles matrix rotation invariant
-        # theta_array = (theta_array - norm_angle * (np.ones((t_points, t_points)) - np.identity(t_points)))
-        # # removing all very small values because of float operation
-        # theta_array[np.abs(theta_array) < 1e-7] = 0
+        # 2Pi shifted because we need angels in [0,2Pi]
+        theta_array_2 = theta_array + 2 * math.pi * (theta_array < 0)
+        # Simple Quantization
+        theta_array_q = (1 + np.floor(theta_array_2 / (2 * math.pi / self.nbins_theta))).astype(int)
 
-        # # 2Pi shifted because we need angels in [0,2Pi]
-        # theta_array_2 = theta_array + 2 * math.pi * (theta_array < 0)
-        # # Simple Quantization
-        # theta_array_q = (1 + np.floor(theta_array_2 / (2 * math.pi / self.nbins_theta))).astype(int)
+        # building point descriptor based on angle and distance
+        nbins = self.nbins_theta * self.nbins_r
+        descriptor = np.zeros((t_points, nbins))
+        for i in range(t_points):
+            sn = np.zeros((self.nbins_r, self.nbins_theta))
+            for j in range(t_points):
+                if (fz[i, j]):
+                    sn[r_array_q[i, j] - 1, theta_array_q[i, j] - 1] += 1
+            descriptor[i] = sn.reshape(nbins)
 
-        # # building point descriptor based on angle and distance
-        # nbins = self.nbins_theta * self.nbins_r
-        # descriptor = np.zeros((t_points, nbins))
-        # for i in range(t_points):
-        #     sn = np.zeros((self.nbins_r, self.nbins_theta))
-        #     for j in range(t_points):
-        #         if (fz[i, j]):
-        #             sn[r_array_q[i, j] - 1, theta_array_q[i, j] - 1] += 1
-        #     descriptor[i] = sn.reshape(nbins)
-
-        return r_array_q
+        return descriptor
 
     def cosine_diff(self, P, Q):
         """
@@ -201,7 +199,6 @@ def get_contour_bounding_rectangles(gray):
 # request handler
 def match_image(request):
     sc = ShapeContext() 
-    
     # process query image
     post = request.POST.get("path")
     post = post.replace("/static/app/images/grey/", '')
@@ -211,10 +208,18 @@ def match_image(request):
     img_query_edges = bin_img(post)
 
     # descriptor for query image
-    points = sc.get_points_from_img(img_query_edges, 15) # 15 X 15 matrix 
-    descriptor = sc.compute(points)
-    # print('hist: ', descriptor)
-    descriptor = np.array(descriptor)
+    # points = sc.get_points_from_img(img_query_edges, 15) # 15 X 15 matrix 
+    # descriptor = sc.compute(points).flatten()
+    # # print('hist: ', descriptor)
+    # descriptor = np.array(descriptor)
+    # # print('descriptor:', descriptor)
+
+    descs = []
+    points = sc.get_points_from_img(img_query_edges, 20)
+    descriptor = sc.compute(points).flatten()
+    # descs.append(descriptor)
+    query_img_descriptor = np.array(descriptor)
+    # print(type(descriptor_arr))
 
     # get DB image paths
     GREY_FILES = []
@@ -235,24 +240,22 @@ def match_image(request):
         img = bin_img(file)
 
         # descriptor
-        img_points = sc.get_points_from_img(img, 15) # 15 X 15 matrix 
-        img_descriptor = sc.compute(img_points)
-        
+        img_points = sc.get_points_from_img(img, 20) # 15 X 15 matrix 
+        img_descriptor = sc.compute(img_points).flatten()
+        img_descriptor_arr = np.array(img_descriptor)
+
         # key: image path, value: image descriptor
         if file not in DB_DESCRIPTOR:
             DB_DESCRIPTOR[file] = ''
         
-        DB_DESCRIPTOR[file] = img_descriptor
+        DB_DESCRIPTOR[file] = img_descriptor_arr
 
     # cost calculation
     COST_DICT = {}
     for path in DB_DESCRIPTOR: 
-        hist = DB_DESCRIPTOR[path]
-
-        cost = 0
-        cost = (np.subtract(descriptor, hist))**2/np.add(descriptor, hist)
-        cost = cost/2
-        cost[np.isnan(cost)] = 0
+        compared_img_descriptor = DB_DESCRIPTOR[path]
+        cost = sc._cost(query_img_descriptor, compared_img_descriptor)
+        # print(cost)
 
         # key: image path, value: cost
         if path not in COST_DICT:
@@ -260,24 +263,31 @@ def match_image(request):
         
         COST_DICT[path] = cost
     
-    best_match= {}
-    for min in COST_DICT:
+    COST_DICT = {key:val for key, val in COST_DICT.items() if val == 0}
+
+    # print("query image: ", post)
+    # print(COST_DICT)
+    # best_match= {}
+    # for cost in COST_DICT:
+    #     # min = sc._hungarian(cost)
+    #     # print(min)
+    #     if image not in best_match:
+    #         best_match[image] = ''
         
-        low = sc._hungarian(COST_DICT[min])
-        if min not in best_match:
-            best_match[min] = ''
-        
-        best_match[min] = low
+    #     best_match[image] = cost
    
+    # print("query image: ", post)
+    # for key, value in best_match.items() :
+    #     print (value)
 
-    print(best_match)
-    return render(request, 'hello.html', {'context': best_match})
-    # trim results 
-    # best_match = dict(list(scores.items())[:5])
-    # print(dict(list(scores.items())[:5]))
+    #trim results 
+    best_match = dict(list(COST_DICT.items())[:5])
+    # print("query image: ", post)
+    # print('best match: ', best_match)
+
+    return render(request, 'index.html', {'context': best_match})
 
 
-      
 def load_front_page(request):
     try:
         GREY_FILES = []
@@ -296,7 +306,7 @@ def load_front_page(request):
         for file in GREY_FILES:
             if file not in image_paths:
                 image_paths[file] = ''
-            image_paths[file] = file.replace('/Users/Douglas/Contextmatching/csc664/app', '')
+            image_paths[file] = file.replace('/Users/tonycao/Desktop/csc664/csc664/app', '')
 
         # print(image_paths)
         
