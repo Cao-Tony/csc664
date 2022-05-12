@@ -7,7 +7,9 @@ import math
 from scipy.spatial.distance import cdist, cosine
 from scipy.optimize import linear_sum_assignment
 import numpy as np;
-import matplotlib.pyplot as plt
+# from matplotlib import pyplot as plt 
+# from matplotlib import image as mpimg
+from tkinter import * 
 
 # -------------------------- change based on your path -------------------------- #
 GREY_DIR = '/Users/tonycao/Desktop/csc664/csc664/app/static/app/images/grey/'
@@ -213,6 +215,10 @@ def match_image(request):
     # # print('hist: ', descriptor)
     # descriptor = np.array(descriptor)
     # # print('descriptor:', descriptor)
+    img_query_hist = cv2.imread(post)
+    hist_query = cv2.calcHist([img_query_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
+    hist_query[255, 255, 255] = 0
+    cv2.normalize(hist_query, hist_query, 0, 1, cv2.NORM_MINMAX)
 
     descs = []
     points = sc.get_points_from_img(img_query_edges, 20)
@@ -250,6 +256,32 @@ def match_image(request):
         
         DB_DESCRIPTOR[file] = img_descriptor_arr
 
+    scores = []
+    for file in GREY_FILES:
+        img_hist = cv2.imread(file)
+        hist = cv2.calcHist([img_hist], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
+        hist[255, 255, 255] = 0
+        cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
+
+        hist_diff = cv2.compareHist(hist_query, hist, cv2.HISTCMP_CORREL)
+
+        scores.append((hist_diff, file))
+
+    scores.sort(key=lambda y: y[0], reverse=True)
+    
+    best_match = {}
+    for index, tuple in enumerate(scores):
+        if tuple[1] not in best_match:
+            best_match[tuple[1]] = ''
+        best_match[tuple[1]] = tuple[0]
+
+    # trim results 
+    best_match = dict(list(best_match.items())[:5])
+    print('query image: ', post)
+    
+    for key in best_match:
+        print('image: ' + str(key) + ' ---> ', best_match[key])
+        
     # cost calculation
     COST_DICT = {}
     for path in DB_DESCRIPTOR: 
@@ -268,24 +300,24 @@ def match_image(request):
     # print("query image: ", post)
     # print(COST_DICT)
     # best_match= {}
-    # for cost in COST_DICT:
-    #     # min = sc._hungarian(cost)
-    #     # print(min)
-    #     if image not in best_match:
-    #         best_match[image] = ''
+
+    for cost in COST_DICT:
+        min = sc._hungarian(cost)
+        if image not in best_match:
+            best_match[image] = ''
         
-    #     best_match[image] = cost
+        best_match[image] = cost
    
     # print("query image: ", post)
     # for key, value in best_match.items() :
     #     print (value)
 
     #trim results 
-    best_match = dict(list(COST_DICT.items())[:5])
+    # best_match = dict(list(COST_DICT.items())[:5])
     # print("query image: ", post)
     # print('best match: ', best_match)
 
-    return render(request, 'index.html', {'context': best_match})
+    return render(request, 'hello.html', {'context': best_match})
 
 
 def load_front_page(request):
