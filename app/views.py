@@ -275,8 +275,8 @@ def match_image(request):
             best_match[tuple[1]] = ''
         best_match[tuple[1]] = tuple[0]
 
-    # trim results 
-    best_match = dict(list(best_match.items())[:5])
+    # trim results to 10 
+    best_match = dict(list(best_match.items())[:10])
     print('query image: ', post)
     
     for key in best_match:
@@ -301,12 +301,12 @@ def match_image(request):
     # print(COST_DICT)
     # best_match= {}
 
-    for cost in COST_DICT:
-        min = sc._hungarian(cost)
-        if image not in best_match:
-            best_match[image] = ''
+    # for cost in COST_DICT:
+    #     min = sc._hungarian(cost)
+    #     if image not in best_match:
+    #         best_match[image] = ''
         
-        best_match[image] = cost
+    #     best_match[image] = cost
    
     # print("query image: ", post)
     # for key, value in best_match.items() :
