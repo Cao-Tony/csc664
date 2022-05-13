@@ -161,7 +161,8 @@ class ShapeContext(object):
 def bin_img(image):
     img = cv2.imread(image)
     img_blur = cv2.GaussianBlur(img, (3,3), 0)
-    edges = cv2.Canny(image=img_blur, threshold1=100, threshold2=200)
+    gray = cv2.cvtColor(img_blur, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(image=gray, threshold1=100, threshold2=200)
     return edges
 
 
